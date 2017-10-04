@@ -29,7 +29,7 @@ class ParseError : public std::exception {
 public:
     std::string description;
 
-    virtual const char *what() const throw() {
+    virtual const char *what() const noexcept {
         return description.c_str();
     }
 
