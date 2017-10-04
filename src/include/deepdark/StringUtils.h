@@ -8,7 +8,7 @@ namespace deepdark {
 
 namespace string_utils {
 
-std::vector<std::string> split(const std::string& s, const std::string& delim, unsigned long n = 0) {
+static std::vector<std::string> split(const std::string& s, const std::string& delim, unsigned long n = 0) {
     unsigned long p = 0, cp = 0;
     std::vector<std::string> ret;
 
@@ -24,7 +24,7 @@ std::vector<std::string> split(const std::string& s, const std::string& delim, u
     return ret;
 }
 
-std::string join(const std::vector<std::string> parts, const std::string& delim) {
+static std::string join(const std::vector<std::string> parts, const std::string& delim) {
     std::string ret;
     bool is_first = true;
 
@@ -39,7 +39,7 @@ std::string join(const std::vector<std::string> parts, const std::string& delim)
     return ret;
 }
 
-std::string trim(const std::string& s, const std::vector<char>& _chs) {
+static std::string trim(const std::string& s, const std::vector<char>& _chs) {
     if(s.size() == 0) {
         return std::string("");
     }
@@ -69,13 +69,13 @@ std::string trim(const std::string& s, const std::vector<char>& _chs) {
     return s.substr(start, end - start + 1);
 }
 
-std::string trim(const std::string& s, const char c) {
+static std::string trim(const std::string& s, const char c) {
     std::vector<char> chs;
     chs.push_back(c);
     return trim(s, chs);
 }
 
-std::string trim(const std::string& s) {
+static std::string trim(const std::string& s) {
     std::vector<char> chs;
     chs.push_back(' ');
     chs.push_back('\n');
@@ -84,7 +84,7 @@ std::string trim(const std::string& s) {
     return trim(s, chs);
 }
 
-template<typename T> std::string append(const std::string& s, const T& other) {
+template<typename T> static std::string append(const std::string& s, const T& other) {
     return s + std::to_string(other);
 }
 
