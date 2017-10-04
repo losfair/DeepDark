@@ -1,8 +1,9 @@
 #include <deepdark/StringUtils.h>
 #include <iostream>
+#include <vector>
 #include <assert.h>
 
-void test_split() {
+void run_tests() {
     auto ret_1 = deepdark::string_utils::split("Hello world", " ");
     assert(ret_1.size() == 2 && ret_1[0] == "Hello" && ret_1[1] == "world");
 
@@ -30,11 +31,17 @@ void test_split() {
     auto ret_9 = deepdark::string_utils::append("Hello ", 42);
     assert(ret_9 == "Hello 42");
 
+    std::vector<char> test_10_chars_to_trim;
+    test_10_chars_to_trim.push_back('\t');
+    test_10_chars_to_trim.push_back(' ');
+    auto ret_10 = deepdark::string_utils::trim("\t Hello world\t ", test_10_chars_to_trim);
+    assert(ret_10 == "Hello world");
+
     std::cerr << "[+] OK" << std::endl;
 }
 int main() {
-    std::cerr << "[*] Testing split" << std::endl;
-    test_split();
+    std::cerr << "[*] Testing StringUtils" << std::endl;
+    run_tests();
 
     return 0;
 }

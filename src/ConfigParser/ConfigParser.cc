@@ -1,8 +1,11 @@
 #include <deepdark/ConfigParser.h>
 #include <deepdark/StringUtils.h>
 
+#include <fstream>
 #include <vector>
 #include <unordered_map>
+#include <stdexcept>
+#include <sstream>
 
 namespace deepdark {
 
@@ -20,8 +23,13 @@ std::unique_ptr<ServiceConfig> ServiceConfig::load(const std::string& config) {
     std::unordered_map<std::string, std::string> fields;
 
     unsigned long line_id = 0;
-    for(auto& line : lines) {
+    for(auto& _line : lines) {
         line_id++;
+
+        auto line = string_utils::trim(_line);
+        if(line.size() == 0) {
+            continue;
+        }
 
         auto parts = string_utils::split(line, "=", 2);
         if(parts.size() != 2) {
@@ -29,8 +37,8 @@ std::unique_ptr<ServiceConfig> ServiceConfig::load(const std::string& config) {
                 string_utils::append("Parse error at line ", line_id)
             );
         }
-        std::string k = string_utils::trim(string_utils::trim(parts[0], ' '), '\t');
-        std::string v = string_utils::trim(string_utils::trim(parts[1], ' '), '\t');
+        std::string k = string_utils::trim(parts[0]);
+        std::string v = string_utils::trim(parts[1]);
         fields[k] = v;
     }
 
@@ -47,6 +55,18 @@ std::unique_ptr<ServiceConfig> ServiceConfig::load(const std::string& config) {
     }
 
     return ret;
+}
+
+std::unique_ptr<ServiceConfig> ServiceConfig::load_from_file(const std::string& path) {
+    std::ifstream f(path, std::ios::binary);
+    if(!f.is_open()) {
+        throw std::runtime_error("Unable to open config file");
+    }
+
+    std::stringstream content_ss;
+    content_ss << f.rdbuf();
+
+    return load(content_ss.str());
 }
 
 static bool must_parse_bool(const std::string& v) {
