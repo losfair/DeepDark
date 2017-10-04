@@ -2,12 +2,14 @@
 
 #include <memory>
 #include <string>
+#include <exception>
 #include <sys/types.h>
 
 namespace deepdark {
 
 class ServiceConfig {
 public:
+    std::string name;
     std::string command;
     std::string directory;
     bool autostart;
@@ -20,6 +22,21 @@ public:
     ServiceConfig(ServiceConfig&& other) = delete;
 
     static std::unique_ptr<ServiceConfig> load(const std::string& config);
+};
+
+class ParseError : public std::exception {
+public:
+    std::string description;
+
+    virtual const char *what() const throw() {
+        return description.c_str();
+    }
+
+    static ParseError with_description(const std::string& d) {
+        ParseError ret;
+        ret.description = d;
+        return ret;
+    }
 };
 
 } // namespace deepdark

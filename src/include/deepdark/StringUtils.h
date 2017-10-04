@@ -7,11 +7,14 @@ namespace deepdark {
 
 namespace string_utils {
 
-std::vector<std::string> split(const std::string& s, const std::string& delim) {
+std::vector<std::string> split(const std::string& s, const std::string& delim, unsigned long n = 0) {
     unsigned long p = 0, cp = 0;
     std::vector<std::string> ret;
 
     while((cp = s.find(delim, p)) != std::string::npos) {
+        if(n && ret.size() == n - 1) {
+            break;
+        }
         ret.push_back(s.substr(p, cp - p));
         p = cp + delim.size();
     }
@@ -58,6 +61,10 @@ std::string trim(const std::string& s, const char c) {
     }
 
     return s.substr(start, end - start + 1);
+}
+
+template<typename T> std::string append(const std::string& s, const T& other) {
+    return s + std::to_string(other);
 }
 
 } // namespace string_utils
