@@ -17,11 +17,13 @@ public:
     std::vector<std::unique_ptr<ServiceState>> services;
 
     Supervisor(std::vector<std::unique_ptr<deepdark::ServiceConfig>>);
+    void start_all();
 };
 
 class ServiceState {
 private:
     bool running;
+    unsigned long update_time;
 
 public:
     std::mutex m;
@@ -32,7 +34,7 @@ public:
 
     ServiceState(std::unique_ptr<deepdark::ServiceConfig> cfg);
     ~ServiceState();
-    inline bool is_running() { return running; }
+    inline bool is_running() const { return running; }
     bool start();
     bool stop();
 };

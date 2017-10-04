@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 namespace deepdark {
 
@@ -15,11 +17,18 @@ Supervisor::Supervisor(std::vector<std::unique_ptr<deepdark::ServiceConfig>> cfg
     }
 }
 
+void Supervisor::start_all() {
+    for(auto& svc : services) {
+        svc -> start();
+    }
+}
+
 ServiceState::ServiceState(std::unique_ptr<deepdark::ServiceConfig> cfg) {
     config = std::move(cfg);
     running = false;
     pid = 0;
     exit_status = 0;
+    update_time = 0;
 }
 
 ServiceState::~ServiceState() {
@@ -42,7 +51,7 @@ bool ServiceState::start() {
 
     pid_t new_pid;
 
-    if((new_pid == fork()) == 0) {
+    if((new_pid = fork()) == 0) {
         execl("/bin/sh", "/bin/sh", "-c", config -> command.c_str(), NULL);
         std::cerr << "Error: Unable to execute /bin/sh" << std::endl;
         exit(1);
@@ -50,6 +59,7 @@ bool ServiceState::start() {
 
     pid = new_pid;
     running = true;
+    update_time = time(0);
 
     // We assume that `this` is valid during the whole lifetime of the closure.
     executor = std::unique_ptr<std::thread>(new std::thread([this, new_pid]() {
@@ -60,13 +70,20 @@ bool ServiceState::start() {
         else exit_status = WEXITSTATUS(exit_status);
 
         std::lock_guard<std::mutex> _lg(this -> m);
+        std::clog << "[*] Service `" << this -> config -> name << "` stopped with status " << exit_status << std::endl;
         this -> running = false;
         this -> exit_status = exit_status;
+        this -> pid = 0;
+        this -> update_time = time(0);
     }));
+
+    std::clog << "[*] Service `" << config -> name << "` started" << std::endl;
 
     return true;
 }
 
+
+// This function should NOT modify any fields of `this`.
 bool ServiceState::stop() {
 
     {

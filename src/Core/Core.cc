@@ -5,6 +5,9 @@
 #include <vector>
 #include <stdexcept>
 #include <dirent.h>
+#include <chrono>
+#include <thread>
+#include "Supervisor.h"
 
 static void run(std::unique_ptr<deepdark::GlobalConfig> global_config);
 static std::vector<std::unique_ptr<deepdark::ServiceConfig>> load_services(const deepdark::GlobalConfig& global_config);
@@ -23,7 +26,14 @@ int main(int argc, const char *argv[]) {
 }
 
 static void run(std::unique_ptr<deepdark::GlobalConfig> global_config) {
-    load_services(*global_config);
+    auto services = load_services(*global_config);
+    deepdark::Supervisor supervisor(std::move(services));
+    supervisor.start_all();
+
+    using namespace std::chrono_literals;
+    while(true) {
+        std::this_thread::sleep_for(1000s);
+    }
 }
 
 static std::vector<std::unique_ptr<deepdark::ServiceConfig>> load_services(const deepdark::GlobalConfig& global_config) {
@@ -37,6 +47,7 @@ static std::vector<std::unique_ptr<deepdark::ServiceConfig>> load_services(const
     std::vector<std::string> sc_paths;
     dirent *ent = NULL;
     while(ent = readdir(dir)) {
+        if(ent -> d_type != DT_REG) continue;
         sc_paths.push_back(std::string(ent -> d_name));
     }
 
