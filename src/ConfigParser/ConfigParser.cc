@@ -29,7 +29,9 @@ std::unique_ptr<ServiceConfig> ServiceConfig::load(const std::string& config) {
                 string_utils::append("Parse error at line ", line_id)
             );
         }
-        fields[parts[0]] = parts[1];
+        std::string k = string_utils::trim(string_utils::trim(parts[0], ' '), '\t');
+        std::string v = string_utils::trim(string_utils::trim(parts[1], ' '), '\t');
+        fields[k] = v;
     }
 
     std::unique_ptr<ServiceConfig> ret(new ServiceConfig());
