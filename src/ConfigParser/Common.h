@@ -50,4 +50,16 @@ static bool must_parse_bool(const std::string& v) {
     }
 }
 
+static std::string must_read_file(const std::string& path) {
+    std::ifstream f(path, std::ios::binary);
+    if(!f.is_open()) {
+        throw std::runtime_error("Unable to open config file");
+    }
+
+    std::stringstream content_ss;
+    content_ss << f.rdbuf();
+
+    return content_ss.str();
+}
+
 } // namespace deepdark

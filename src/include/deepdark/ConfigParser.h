@@ -25,6 +25,18 @@ public:
     static std::unique_ptr<ServiceConfig> load_from_file(const std::string& path);
 };
 
+class GlobalConfig {
+public:
+    std::string service_config_directory;
+
+    GlobalConfig();
+    GlobalConfig(const ServiceConfig& other) = delete;
+    GlobalConfig(ServiceConfig&& other) = delete;
+
+    static std::unique_ptr<GlobalConfig> load(const std::string& config);
+    static std::unique_ptr<GlobalConfig> load_from_file(const std::string& path);
+};
+
 class ParseError : public std::exception {
 public:
     std::string description;

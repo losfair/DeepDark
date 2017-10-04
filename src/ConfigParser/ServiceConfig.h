@@ -39,15 +39,7 @@ std::unique_ptr<ServiceConfig> ServiceConfig::load(const std::string& config) {
 }
 
 std::unique_ptr<ServiceConfig> ServiceConfig::load_from_file(const std::string& path) {
-    std::ifstream f(path, std::ios::binary);
-    if(!f.is_open()) {
-        throw std::runtime_error("Unable to open config file");
-    }
-
-    std::stringstream content_ss;
-    content_ss << f.rdbuf();
-
-    return load(content_ss.str());
+    return load(must_read_file(path));
 }
 
 } // namespace deepdark
