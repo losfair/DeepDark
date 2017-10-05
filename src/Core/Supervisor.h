@@ -25,6 +25,7 @@ public:
     std::string get_status();
     bool start_service(const std::string& name);
     bool stop_service(const std::string& name);
+    void prepare_for_shutdown();
 };
 
 class ServiceState {

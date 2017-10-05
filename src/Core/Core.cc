@@ -7,11 +7,30 @@
 #include <dirent.h>
 #include <chrono>
 #include <thread>
+#include <memory>
+#include <stdlib.h>
+#include <signal.h>
+#include <assert.h>
 #include "Supervisor.h"
 #include "Network.h"
 
 static void run(std::unique_ptr<deepdark::GlobalConfig> global_config);
 static std::vector<std::unique_ptr<deepdark::ServiceConfig>> load_services(const deepdark::GlobalConfig& global_config);
+static std::unique_ptr<deepdark::Supervisor> supervisor;
+
+void gracefully_exit_on_signal(int signo) {
+    if(supervisor == nullptr) {
+        exit(0);
+    }
+
+    // We are in a signal handler. Start a thread to avoid deadlock.
+    std::thread t([]() {
+        supervisor -> prepare_for_shutdown();
+        exit(0);
+    });
+
+    t.detach();
+}
 
 int main(int argc, const char *argv[]) {
     if(argc < 2) {
@@ -28,18 +47,24 @@ int main(int argc, const char *argv[]) {
 
 static void run(std::unique_ptr<deepdark::GlobalConfig> global_config) {
     auto services = load_services(*global_config);
-    deepdark::Supervisor supervisor(std::move(services));
-    supervisor.try_autostart_all();
+
+    assert(supervisor == nullptr);
+    supervisor.reset(new deepdark::Supervisor(std::move(services)));
+
+    signal(SIGINT, gracefully_exit_on_signal);
+    signal(SIGTERM, gracefully_exit_on_signal);
+
+    supervisor -> try_autostart_all();
 
     using namespace std::chrono_literals;
-    std::thread monitor_thread([&supervisor]() {
+    std::thread monitor_thread([]() {
         while(true) {
             std::this_thread::sleep_for(1s);
-            supervisor.try_autorestart_all();
+            supervisor -> try_autorestart_all();
         }
     });
 
-    deepdark::NetworkServer server(supervisor);
+    deepdark::NetworkServer server(*supervisor);
     server.run(global_config -> listen_addr);
 
     std::cerr << "Fatal error: Server exited unexpectedly" << std::endl;

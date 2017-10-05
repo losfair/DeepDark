@@ -80,6 +80,14 @@ bool Supervisor::stop_service(const std::string& name) {
     return false;
 }
 
+void Supervisor::prepare_for_shutdown() {
+    std::lock_guard<std::mutex> _lg(m);
+
+    for(auto& svc : services) {
+        svc -> stop();
+    }
+}
+
 ServiceState::ServiceState(std::unique_ptr<deepdark::ServiceConfig> cfg) {
     config = std::move(cfg);
     running = false;
