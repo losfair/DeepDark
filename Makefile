@@ -6,8 +6,11 @@ build_and_test: Core
 test:
 	make -C src/Tests
 
-Core: ConfigParser
+Core: ConfigParser Protocol
 	make -C src/Core
+
+Protocol:
+	make -C src/Protocol
 
 ConfigParser:
 	make -C src/ConfigParser
