@@ -9,29 +9,55 @@
 
 namespace deepdark {
 
+class DeepDarkControlImpl final : public deepdark_proto::DeepDarkControl::Service {
+public:
+    NetworkServer& server;
+
+    DeepDarkControlImpl(NetworkServer& _server) : server(_server) {}
+
+    grpc::Status get_status(
+        grpc::ServerContext *context,
+        const deepdark_proto::GetStatusRequest *request,
+        deepdark_proto::GetStatusResponse *response
+    ) override {
+        response -> set_description(server.supervisor.get_status());
+        return grpc::Status::OK;
+    }
+
+    grpc::Status change_service_state(
+        grpc::ServerContext *context,
+        const deepdark_proto::ChangeServiceStateRequest *request,
+        deepdark_proto::ChangeServiceStateResponse *response
+    ) override {
+        const std::string& name = request -> service_name();
+        const std::string& op = request -> operation();
+
+        if(name.empty()) {
+            return grpc::Status(
+                grpc::StatusCode::INVALID_ARGUMENT,
+                "Service name must not be empty"
+            );
+        }
+
+        bool ret = false;
+
+        if(op == "start") {
+            ret = server.supervisor.start_service(name);
+        } else if(op == "stop") {
+            ret = server.supervisor.stop_service(name);
+        } else {
+            return grpc::Status(
+                grpc::StatusCode::INVALID_ARGUMENT,
+                "Unknown operation"
+            );
+        }
+
+        response -> set_result(std::to_string(ret));
+        return grpc::Status::OK;
+    }
+};
+
 NetworkServer::NetworkServer(Supervisor& _supervisor) : supervisor(_supervisor) {
-    auto rpc_config = ice_rpc_server_config_create();
-
-    ice_rpc_server_config_add_method(
-        rpc_config,
-        "get_status",
-        [](IceRpcCallContext ctx, void *_this) { ((NetworkServer *) _this) -> on_get_status(ctx); },
-        (void *) this
-    );
-    ice_rpc_server_config_add_method(
-        rpc_config,
-        "start_service",
-        [](IceRpcCallContext ctx, void *_this) { ((NetworkServer *) _this) -> on_start_service(ctx); },
-        (void *) this
-    );
-    ice_rpc_server_config_add_method(
-        rpc_config,
-        "stop_service",
-        [](IceRpcCallContext ctx, void *_this) { ((NetworkServer *) _this) -> on_stop_service(ctx); },
-        (void *) this
-    );
-
-    rpc_server = ice_rpc_server_create(rpc_config);
 }
 
 NetworkServer::~NetworkServer() {
@@ -40,94 +66,22 @@ NetworkServer::~NetworkServer() {
 }
 
 void NetworkServer::run(const std::string& listen_addr) {
-    ice_rpc_server_start(rpc_server, listen_addr.c_str());
+    DeepDarkControlImpl service_impl(*this);
+    grpc::ServerBuilder builder;
+    builder.AddListeningPort(
+        listen_addr,
+        grpc::InsecureServerCredentials()
+    );
+    builder.RegisterService(&service_impl);
 
-    while(true) {
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(1000s);
-    }
-}
-
-void NetworkServer::on_get_status(IceRpcCallContext ctx) {
-    std::string ret = supervisor.get_status();
-    ice_rpc_call_context_end(ctx, ice_rpc_param_build_string(ret.c_str()));
-}
-
-void NetworkServer::on_start_service(IceRpcCallContext ctx) {
-    int num_params = ice_rpc_call_context_get_num_params(ctx);
-    if(num_params != 1) {
-        ice_rpc_call_context_end(
-            ctx,
-            ice_rpc_param_build_error(
-                ice_rpc_param_build_string("Invalid params")
-            )
-        );
-        return;
+    std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
+    if(server == nullptr) {
+        throw std::runtime_error("Unable to start server");
     }
 
-    IceRpcParam _name_p = ice_rpc_call_context_get_param(ctx, 0);
-    ice_owned_string_t _name = ice_rpc_param_get_string_to_owned(_name_p);
+    std::cerr << "Server started" << std::endl;
 
-    if(_name == NULL) {
-        ice_rpc_call_context_end(
-            ctx,
-            ice_rpc_param_build_error(
-                ice_rpc_param_build_string("String required as the first argument")
-            )
-        );
-        return;
-    }
-
-    std::string name(_name);
-    ice_glue_destroy_cstring(_name);
-
-    std::thread t([this, name, ctx]() {
-        bool ret = supervisor.start_service(name);
-        ice_rpc_call_context_end(
-            ctx,
-            ice_rpc_param_build_bool(ret)
-        );
-    });
-    t.detach();
-}
-
-void NetworkServer::on_stop_service(IceRpcCallContext ctx) {
-    int num_params = ice_rpc_call_context_get_num_params(ctx);
-    if(num_params != 1) {
-        ice_rpc_call_context_end(
-            ctx,
-            ice_rpc_param_build_error(
-                ice_rpc_param_build_string("Invalid params")
-            )
-        );
-        return;
-    }
-
-    IceRpcParam _name_p = ice_rpc_call_context_get_param(ctx, 0);
-    ice_owned_string_t _name = ice_rpc_param_get_string_to_owned(_name_p);
-
-    if(_name == NULL) {
-        ice_rpc_call_context_end(
-            ctx,
-            ice_rpc_param_build_error(
-                ice_rpc_param_build_string("String required as the first argument")
-            )
-        );
-        return;
-    }
-
-    std::string name(_name);
-    ice_glue_destroy_cstring(_name);
-
-    std::thread t([this, name, ctx]() {
-        // This may take long.
-        bool ret = supervisor.stop_service(name);
-        ice_rpc_call_context_end(
-            ctx,
-            ice_rpc_param_build_bool(ret)
-        );
-    });
-    t.detach();
+    server -> Wait();
 }
 
 }

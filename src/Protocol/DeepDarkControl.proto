@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package deepdark_proto;
+
+service DeepDarkControl {
+	rpc get_status (GetStatusRequest) returns (GetStatusResponse) {}
+	rpc change_service_state (ChangeServiceStateRequest) returns (ChangeServiceStateResponse) {}
+}
+
+message GetStatusRequest {
+
+}
+
+message GetStatusResponse {
+	string description = 1;
+}
+
+message ChangeServiceStateRequest {
+	string service_name = 1;
+	string operation = 2;
+}
+
+message ChangeServiceStateResponse {
+	string result = 1;
+}

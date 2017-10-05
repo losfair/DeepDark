@@ -6,11 +6,14 @@ build_and_test: Core
 test:
 	make -C src/Tests
 
-Core: ConfigParser
+Core: ConfigParser Protocol
 	make -C src/Core
 
 ConfigParser:
 	make -C src/ConfigParser
+
+Protocol:
+	make -C src/Protocol
 
 clean:
 	find . -name "*.o" -exec rm '{}' ';'
