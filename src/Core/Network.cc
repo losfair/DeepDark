@@ -52,7 +52,12 @@ public:
             );
         }
 
-        response -> set_result(std::to_string(ret));
+        if(ret) {
+            response -> set_result("OK");
+        } else {
+            response -> set_result("Failed");
+        }
+
         return grpc::Status::OK;
     }
 };
