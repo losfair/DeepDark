@@ -145,8 +145,6 @@ bool ServiceState::start() {
 
     pid_t new_pid;
 
-    std::cerr << config -> has_uid << std::endl;
-
     if((new_pid = fork()) == 0) {
         // Only one thread is running here. Things now become easy.
         if(config -> has_uid) {
