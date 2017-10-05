@@ -14,8 +14,12 @@ public:
     std::string directory;
     bool autostart;
     bool autorestart;
+    bool has_uid;
     uid_t uid;
+    bool has_gid;
     gid_t gid;
+    std::string username;
+    std::string groupname;
 
     ServiceConfig();
     ServiceConfig(const ServiceConfig& other) = delete;

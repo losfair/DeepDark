@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <assert.h>
+#include <unistd.h>
 #include "Supervisor.h"
 #include "Network.h"
 
@@ -19,14 +20,17 @@ static std::vector<std::unique_ptr<deepdark::ServiceConfig>> load_services(const
 static std::unique_ptr<deepdark::Supervisor> supervisor;
 
 void gracefully_exit_on_signal(int signo) {
+    // We do immediate exit here to prevent destructors from being called.
+    // FIXME: Make supervisor cleanup correctly.
+
     if(supervisor == nullptr) {
-        exit(0);
+        _exit(0);
     }
 
     // We are in a signal handler. Start a thread to avoid deadlock.
     std::thread t([]() {
         supervisor -> prepare_for_shutdown();
-        exit(0);
+        _exit(0);
     });
 
     t.detach();

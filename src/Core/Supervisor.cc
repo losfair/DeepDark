@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/types.h>
+#include <pwd.h>
+#include <grp.h>
 
 namespace deepdark {
 
@@ -142,10 +145,37 @@ bool ServiceState::start() {
 
     pid_t new_pid;
 
+    std::cerr << config -> has_uid << std::endl;
+
     if((new_pid = fork()) == 0) {
+        // Only one thread is running here. Things now become easy.
+        if(config -> has_uid) {
+            assert(setuid(config -> uid) == 0);
+        } else if(config -> username.size() > 0) {
+            passwd *entry = getpwnam(config -> username.c_str());
+            if(entry) {
+                assert(setuid(entry -> pw_uid) == 0);
+            } else {
+                std::cerr << "Error: Unable to find passwd entry" << std::endl;
+                std::terminate();
+            }
+        }
+
+        if(config -> has_gid) {
+            assert(setgid(config -> gid) == 0);
+        } else if(config -> groupname.size() > 0) {
+            group *entry = getgrnam(config -> groupname.c_str());
+            if(entry) {
+                assert(setgid(entry -> gr_gid) == 0);
+            } else {
+                std::cerr << "Error: Unable to find group entry" << std::endl;
+                std::terminate();
+            }
+        }
+
         execl("/bin/sh", "/bin/sh", "-c", config -> command.c_str(), NULL);
         std::cerr << "Error: Unable to execute /bin/sh" << std::endl;
-        exit(1);
+        std::terminate();
     }
 
     pid = new_pid;
