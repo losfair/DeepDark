@@ -3,6 +3,7 @@
 #include <vector>
 #include <mutex>
 #include <thread>
+#include <string>
 #include <deepdark/ConfigParser.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -21,6 +22,9 @@ public:
     ~Supervisor();
     void try_autostart_all();
     void try_autorestart_all();
+    std::string get_status();
+    bool start_service(const std::string& name);
+    bool stop_service(const std::string& name);
 };
 
 class ServiceState {
@@ -41,6 +45,9 @@ public:
     ServiceState(std::unique_ptr<deepdark::ServiceConfig> cfg);
     ~ServiceState();
     inline bool is_running() const { return running; }
+    inline unsigned long get_update_time() const { return update_time; }
+    inline pid_t get_pid() const { return pid; }
+    inline int get_exit_status() const { return exit_status; }
     bool start();
     bool stop();
     bool try_autostart();

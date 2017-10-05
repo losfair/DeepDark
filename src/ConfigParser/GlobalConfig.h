@@ -12,6 +12,7 @@ std::unique_ptr<GlobalConfig> GlobalConfig::load(const std::string& config) {
     std::unique_ptr<GlobalConfig> ret(new GlobalConfig());
 
     ret -> service_config_directory = fields["service_config_directory"];
+    ret -> listen_addr = fields["listen_addr"];
 
     return ret;
 }

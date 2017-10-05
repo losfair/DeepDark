@@ -8,6 +8,7 @@
 #include <chrono>
 #include <thread>
 #include "Supervisor.h"
+#include "Network.h"
 
 static void run(std::unique_ptr<deepdark::GlobalConfig> global_config);
 static std::vector<std::unique_ptr<deepdark::ServiceConfig>> load_services(const deepdark::GlobalConfig& global_config);
@@ -31,10 +32,18 @@ static void run(std::unique_ptr<deepdark::GlobalConfig> global_config) {
     supervisor.try_autostart_all();
 
     using namespace std::chrono_literals;
-    while(true) {
-        std::this_thread::sleep_for(1s);
-        supervisor.try_autorestart_all();
-    }
+    std::thread monitor_thread([&supervisor]() {
+        while(true) {
+            std::this_thread::sleep_for(1s);
+            supervisor.try_autorestart_all();
+        }
+    });
+
+    deepdark::NetworkServer server(supervisor);
+    server.run(global_config -> listen_addr);
+
+    std::cerr << "Fatal error: Server exited unexpectedly" << std::endl;
+    std::terminate();
 }
 
 static std::vector<std::unique_ptr<deepdark::ServiceConfig>> load_services(const deepdark::GlobalConfig& global_config) {

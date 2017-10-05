@@ -28,6 +28,7 @@ public:
 class GlobalConfig {
 public:
     std::string service_config_directory;
+    std::string listen_addr;
 
     GlobalConfig();
     GlobalConfig(const ServiceConfig& other) = delete;

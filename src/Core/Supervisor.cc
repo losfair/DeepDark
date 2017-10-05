@@ -2,6 +2,7 @@
 #include <iostream>
 #include <exception>
 #include <stdexcept>
+#include <string>
 #include <assert.h>
 #include <unistd.h>
 #include <signal.h>
@@ -35,6 +36,48 @@ void Supervisor::try_autorestart_all() {
     for(auto& svc : services) {
         svc -> try_autorestart();
     }
+}
+
+std::string Supervisor::get_status() {
+    std::lock_guard<std::mutex> _lg(m);
+
+    std::string ret;
+    for(auto& svc : services) {
+        ret += "Service: ";
+        ret += svc -> config -> name;
+        ret += "\n";
+        ret += "Running: ";
+        ret += svc -> is_running() ? "Yes" : "No";
+        ret + "\n";
+
+        ret += "\n";
+    }
+
+    return ret;
+}
+
+bool Supervisor::start_service(const std::string& name) {
+    std::lock_guard<std::mutex> _lg(m);
+
+    for(auto& svc : services) {
+        if(svc -> config -> name == name) {
+            return svc -> start();
+        }
+    }
+
+    return false;
+}
+
+bool Supervisor::stop_service(const std::string& name) {
+    std::lock_guard<std::mutex> _lg(m);
+    
+    for(auto& svc : services) {
+        if(svc -> config -> name == name) {
+            return svc -> stop();
+        }
+    }
+
+    return false;
 }
 
 ServiceState::ServiceState(std::unique_ptr<deepdark::ServiceConfig> cfg) {

@@ -2,5 +2,5 @@ FLAGS := -O3
 CXXFLAGS := $(FLAGS) -std=c++14 -I../include
 LDFLAGS := $(FLAGS)
 
-Core: Core.o Supervisor.o
-	$(CXX) -o ../../target/Core Core.o Supervisor.o ../ConfigParser/ConfigParser.o ../Protocol/DeepDarkControl.pb.o -lpthread -lprotobuf
+Core: Core.o Supervisor.o Network.o
+	$(CXX) -o ../../target/Core Core.o Supervisor.o Network.o ../ConfigParser/ConfigParser.o -lpthread -lice_core
