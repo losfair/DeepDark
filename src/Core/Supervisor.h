@@ -14,19 +14,25 @@ class ServiceState;
 
 class Supervisor {
 public:
+    std::mutex m;
     std::vector<std::unique_ptr<ServiceState>> services;
 
     Supervisor(std::vector<std::unique_ptr<deepdark::ServiceConfig>>);
-    void start_all();
+    ~Supervisor();
+    void try_autostart_all();
+    void try_autorestart_all();
 };
 
 class ServiceState {
 private:
     bool running;
+    bool should_autorestart;
     unsigned long update_time;
+    unsigned long start_time;
+    unsigned long stop_time;
 
 public:
-    std::mutex m;
+    std::recursive_mutex m;
     std::unique_ptr<deepdark::ServiceConfig> config;
     std::unique_ptr<std::thread> executor;
     pid_t pid;
@@ -37,6 +43,8 @@ public:
     inline bool is_running() const { return running; }
     bool start();
     bool stop();
+    bool try_autostart();
+    bool try_autorestart();
 };
 
 } // namespace deepdark

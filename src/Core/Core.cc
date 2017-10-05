@@ -28,11 +28,12 @@ int main(int argc, const char *argv[]) {
 static void run(std::unique_ptr<deepdark::GlobalConfig> global_config) {
     auto services = load_services(*global_config);
     deepdark::Supervisor supervisor(std::move(services));
-    supervisor.start_all();
+    supervisor.try_autostart_all();
 
     using namespace std::chrono_literals;
     while(true) {
-        std::this_thread::sleep_for(1000s);
+        std::this_thread::sleep_for(1s);
+        supervisor.try_autorestart_all();
     }
 }
 

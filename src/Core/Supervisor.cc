@@ -17,22 +17,38 @@ Supervisor::Supervisor(std::vector<std::unique_ptr<deepdark::ServiceConfig>> cfg
     }
 }
 
-void Supervisor::start_all() {
+Supervisor::~Supervisor() {
+    std::lock_guard<std::mutex> _lg(m);
+}
+
+void Supervisor::try_autostart_all() {
+    std::lock_guard<std::mutex> _lg(m);
+
     for(auto& svc : services) {
-        svc -> start();
+        svc -> try_autostart();
+    }
+}
+
+void Supervisor::try_autorestart_all() {
+    std::lock_guard<std::mutex> _lg(m);
+
+    for(auto& svc : services) {
+        svc -> try_autorestart();
     }
 }
 
 ServiceState::ServiceState(std::unique_ptr<deepdark::ServiceConfig> cfg) {
     config = std::move(cfg);
     running = false;
+    should_autorestart = false;
     pid = 0;
     exit_status = 0;
     update_time = 0;
+    start_time = 0;
 }
 
 ServiceState::~ServiceState() {
-    std::lock_guard<std::mutex> _lg(m);
+    std::lock_guard<std::recursive_mutex> _lg(m);
 
     if(is_running()) {
         std::cerr << "Fatal error: Attempting to destroy a service while it is still running" << std::endl;
@@ -40,8 +56,32 @@ ServiceState::~ServiceState() {
     }
 }
 
+bool ServiceState::try_autostart() {
+    std::lock_guard<std::recursive_mutex> _lg(m);
+    
+    if(is_running() || !config -> autostart) {
+        return false;
+    }
+
+    return start();
+}
+
+bool ServiceState::try_autorestart() {
+    std::lock_guard<std::recursive_mutex> _lg(m);
+
+    if(is_running() || !config -> autorestart || !should_autorestart) {
+        return false;
+    }
+
+    if(time(0) - start_time < 5) {
+        return false;
+    }
+
+    return start();
+}
+
 bool ServiceState::start() {
-    std::lock_guard<std::mutex> _lg(m);
+    std::lock_guard<std::recursive_mutex> _lg(m);
 
     if(is_running()) {
         return false;
@@ -60,6 +100,8 @@ bool ServiceState::start() {
     pid = new_pid;
     running = true;
     update_time = time(0);
+    start_time = update_time;
+    should_autorestart = true;
 
     // We assume that `this` is valid during the whole lifetime of the closure.
     executor = std::unique_ptr<std::thread>(new std::thread([this, new_pid]() {
@@ -69,12 +111,15 @@ bool ServiceState::start() {
         if(ret == -1) exit_status = -1;
         else exit_status = WEXITSTATUS(exit_status);
 
-        std::lock_guard<std::mutex> _lg(this -> m);
+        std::lock_guard<std::recursive_mutex> _lg(this -> m);
         std::clog << "[*] Service `" << this -> config -> name << "` stopped with status " << exit_status << std::endl;
         this -> running = false;
         this -> exit_status = exit_status;
         this -> pid = 0;
         this -> update_time = time(0);
+        this -> stop_time = this -> update_time;
+        this -> executor -> detach();
+        this -> executor.reset(nullptr);
     }));
 
     std::clog << "[*] Service `" << config -> name << "` started" << std::endl;
@@ -83,15 +128,17 @@ bool ServiceState::start() {
 }
 
 
-// This function should NOT modify any fields of `this`.
+// This function should NOT modify any fields of `this` except `should_autorestart`.
 bool ServiceState::stop() {
 
     {
-        std::lock_guard<std::mutex> _lg(m);
+        std::lock_guard<std::recursive_mutex> _lg(m);
         
         if(!is_running()) {
             return false;
         }
+
+        should_autorestart = false;
 
         assert(executor != nullptr);
         assert(pid > 0);
@@ -103,7 +150,7 @@ bool ServiceState::stop() {
     sleep(1);
 
     {
-        std::lock_guard<std::mutex> _lg(m);
+        std::lock_guard<std::recursive_mutex> _lg(m);
         if(!is_running()) {
             return true;
         }
@@ -114,7 +161,7 @@ bool ServiceState::stop() {
     sleep(5);
 
     {
-        std::lock_guard<std::mutex> _lg(m);
+        std::lock_guard<std::recursive_mutex> _lg(m);
         if(!is_running()) {
             return true;
         }
