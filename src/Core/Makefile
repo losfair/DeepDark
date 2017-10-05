@@ -5,6 +5,6 @@ LINK_OBJS := Core.o Supervisor.o Network.o ../ConfigParser/ConfigParser.o ../Pro
 LIBS := -lprotobuf -lgrpc++ -lgrpc -lpthread -lz -lssl -lcrypto -ldl -lrt
 
 Core: Core.o Supervisor.o Network.o
-	$(CXX) -O3 -o ../../target/Core $(LINK_OBJS) $(LIBS) -L/usr/local/lib
-	$(CXX) -O3 -o ../../target/Core_static $(LINK_OBJS) $(LIBS) -L/usr/local/lib --static
-	strip ../../target/Core ../../target/Core_static
+	$(CXX) -O3 -o ../../target/deepdark $(LINK_OBJS) $(LIBS) -L/usr/local/lib
+	$(CXX) -O3 -o ../../target/deepdark.static $(LINK_OBJS) $(LIBS) -L/usr/local/lib --static
+	strip ../../target/deepdark ../../target/deepdark.static
