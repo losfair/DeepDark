@@ -81,11 +81,14 @@ void NetworkServer::on_start_service(IceRpcCallContext ctx) {
     std::string name(_name);
     ice_glue_destroy_cstring(_name);
 
-    bool ret = supervisor.start_service(name);
-    ice_rpc_call_context_end(
-        ctx,
-        ice_rpc_param_build_bool(ret)
-    );
+    std::thread t([this, name, ctx]() {
+        bool ret = supervisor.start_service(name);
+        ice_rpc_call_context_end(
+            ctx,
+            ice_rpc_param_build_bool(ret)
+        );
+    });
+    t.detach();
 }
 
 void NetworkServer::on_stop_service(IceRpcCallContext ctx) {
@@ -116,11 +119,15 @@ void NetworkServer::on_stop_service(IceRpcCallContext ctx) {
     std::string name(_name);
     ice_glue_destroy_cstring(_name);
 
-    bool ret = supervisor.stop_service(name);
-    ice_rpc_call_context_end(
-        ctx,
-        ice_rpc_param_build_bool(ret)
-    );
+    std::thread t([this, name, ctx]() {
+        // This may take long.
+        bool ret = supervisor.stop_service(name);
+        ice_rpc_call_context_end(
+            ctx,
+            ice_rpc_param_build_bool(ret)
+        );
+    });
+    t.detach();
 }
 
 }
