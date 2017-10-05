@@ -33,7 +33,7 @@ def run():
             DeepDarkControl_pb2.GetStatusRequest()
         )
         print(ret.description)
-    elif args.action == "start" or args.action == "stop":
+    elif args.action == "start" or args.action == "stop" or args.action == "restart":
         target = args.opt1
         if target == None:
             print("Service name required")

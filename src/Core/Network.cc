@@ -45,6 +45,9 @@ public:
             ret = server.supervisor.start_service(name);
         } else if(op == "stop") {
             ret = server.supervisor.stop_service(name);
+        } else if(op == "restart") {
+            server.supervisor.stop_service(name);
+            ret = server.supervisor.start_service(name);
         } else {
             return grpc::Status(
                 grpc::StatusCode::INVALID_ARGUMENT,
