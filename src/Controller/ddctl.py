@@ -1,15 +1,17 @@
-import pyice
 import asyncio
 import argparse
+import grpc
+import DeepDarkControl_pb2
+import DeepDarkControl_pb2_grpc
 
-async def run():
+def run():
     parser = argparse.ArgumentParser(
         description = "Command-line interface for DeepDark"
     )
     parser.add_argument(
         "--remote",
         dest = "remote_addr",
-        default = "127.0.0.1:8189",
+        default = "unix:/tmp/deepdark.sock",
         help = "Remote address to connect"
     )
     parser.add_argument(
@@ -23,32 +25,28 @@ async def run():
     )
     args = parser.parse_args()
 
-    client = pyice.rpc.Client(args.remote_addr)
-    pool = pyice.rpc.ClientConnectionPool(client)
-    await pool.init()
+    channel = grpc.insecure_channel(args.remote_addr)
+    stub = DeepDarkControl_pb2_grpc.DeepDarkControlStub(channel)
 
     if args.action == "status":
-        ret = await pool.call("get_status", [])
-        print(ret.get_string())
+        ret = stub.get_status(
+            DeepDarkControl_pb2.GetStatusRequest()
+        )
+        print(ret.description)
     elif args.action == "start" or args.action == "stop":
         target = args.opt1
         if target == None:
-            raise Exception("Service name required")
-
-        if args.action == "start":
-            op_name = "start_service"
+            print("Service name required")
         else:
-            op_name = "stop_service"
-
-        ret = await pool.call(op_name, [
-            pyice.rpc.Param.build_string(target)
-        ])
-        if ret.get_bool():
-            print("OK")
-        else:
-            print("Error")
+            ret = stub.change_service_state(
+                DeepDarkControl_pb2.ChangeServiceStateRequest(
+                    service_name = target,
+                    operation = args.action
+                )
+            )
+            print(ret.result)
     else:
         print("Unknown action: " + args.action)
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(run())
+if __name__ == "__main__":
+    run()
