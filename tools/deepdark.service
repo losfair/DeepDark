@@ -1,0 +1,10 @@
+[Unit]
+Description=DeepDark Service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/deepdark /etc/deepdark/config.conf
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
