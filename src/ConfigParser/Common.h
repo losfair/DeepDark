@@ -19,7 +19,7 @@ static std::unordered_map<std::string, std::string> must_parse_kv_config(const s
     for(auto& _line : lines) {
         line_id++;
 
-        auto line = string_utils::trim(_line);
+        auto line = string_utils::trim(string_utils::split(_line, "#", 2)[0]);
         if(line.size() == 0) {
             continue;
         }
@@ -27,7 +27,7 @@ static std::unordered_map<std::string, std::string> must_parse_kv_config(const s
         auto parts = string_utils::split(line, "=", 2);
         if(parts.size() != 2) {
             throw ParseError::with_description(
-                string_utils::append("Parse error at line ", line_id)
+                string_utils::append("Parse error at line ", line_id) + ": " + line
             );
         }
         std::string k = string_utils::trim(parts[0]);
