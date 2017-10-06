@@ -103,12 +103,7 @@ ServiceState::ServiceState(std::unique_ptr<deepdark::ServiceConfig> cfg) {
 }
 
 ServiceState::~ServiceState() {
-    std::lock_guard<std::recursive_mutex> _lg(m);
-
-    if(is_running()) {
-        std::cerr << "Fatal error: Attempting to destroy a service while it is still running" << std::endl;
-        std::terminate();
-    }
+    stop();
 }
 
 bool ServiceState::try_autostart() {
