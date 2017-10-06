@@ -97,11 +97,15 @@ static std::vector<std::unique_ptr<deepdark::ServiceConfig>> load_services(const
 
     std::vector<std::unique_ptr<deepdark::ServiceConfig>> ret;
     for(auto& p : sc_paths) {
-        ret.push_back(
-            deepdark::ServiceConfig::load_from_file(
-                global_config.service_config_directory + "/" + p
-            )
-        );
+        try {
+            ret.push_back(
+                deepdark::ServiceConfig::load_from_file(
+                    global_config.service_config_directory + "/" + p
+                )
+            );
+        } catch(deepdark::ParseError& e) {
+            std::cerr << "Error while parsing config file `" << p << "`: " << e.what() << std::endl;
+        }
     }
     return ret;
 }
