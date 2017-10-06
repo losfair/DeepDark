@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include "Supervisor.h"
 #include "Network.h"
+#include "Loader.h"
 
 static void run(std::unique_ptr<deepdark::GlobalConfig> global_config);
 static std::vector<std::unique_ptr<deepdark::ServiceConfig>> load_services(const deepdark::GlobalConfig& global_config);
@@ -53,15 +54,16 @@ int main(int argc, const char *argv[]) {
 }
 
 static void run(std::unique_ptr<deepdark::GlobalConfig> global_config) {
-    auto services = load_services(*global_config);
+    std::string listen_addr = global_config -> listen_addr;
 
     assert(supervisor == nullptr);
-    supervisor.reset(new deepdark::Supervisor(std::move(services)));
+    supervisor.reset(new deepdark::Supervisor(std::move(global_config)));
 
     signal(SIGINT, gracefully_exit_on_signal);
     signal(SIGTERM, gracefully_exit_on_signal);
 
-    supervisor -> try_autostart_all();
+    // Supervisor constructor now do the autostart.
+    //supervisor -> try_autostart_all();
 
     using namespace std::chrono_literals;
     std::thread monitor_thread([]() {
@@ -72,40 +74,8 @@ static void run(std::unique_ptr<deepdark::GlobalConfig> global_config) {
     });
 
     deepdark::NetworkServer server(*supervisor);
-    server.run(global_config -> listen_addr);
+    server.run(listen_addr);
 
     std::cerr << "Fatal error: Server exited unexpectedly" << std::endl;
     std::terminate();
-}
-
-static std::vector<std::unique_ptr<deepdark::ServiceConfig>> load_services(const deepdark::GlobalConfig& global_config) {
-    DIR *dir = opendir(global_config.service_config_directory.c_str());
-    if(!dir) {
-        throw std::runtime_error(
-            std::string("Unable to open service config directory: ") + global_config.service_config_directory
-        );
-    }
-
-    std::vector<std::string> sc_paths;
-    dirent *ent = NULL;
-    while(ent = readdir(dir)) {
-        if(ent -> d_type != DT_REG) continue;
-        sc_paths.push_back(std::string(ent -> d_name));
-    }
-
-    closedir(dir);
-
-    std::vector<std::unique_ptr<deepdark::ServiceConfig>> ret;
-    for(auto& p : sc_paths) {
-        try {
-            ret.push_back(
-                deepdark::ServiceConfig::load_from_file(
-                    global_config.service_config_directory + "/" + p
-                )
-            );
-        } catch(deepdark::ParseError& e) {
-            std::cerr << "Error while parsing config file `" << p << "`: " << e.what() << std::endl;
-        }
-    }
-    return ret;
 }

@@ -33,6 +33,9 @@ def run():
             DeepDarkControl_pb2.GetStatusRequest()
         )
         print(ret.description)
+    elif args.action == "reload":
+        stub.do_global_reload(DeepDarkControl_pb2.DoGlobalReloadRequest())
+        print("Done")
     elif args.action == "start" or args.action == "stop" or args.action == "restart":
         target = args.opt1
         if target == None:

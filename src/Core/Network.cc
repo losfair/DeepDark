@@ -63,6 +63,15 @@ public:
 
         return grpc::Status::OK;
     }
+
+    grpc::Status do_global_reload(
+        grpc::ServerContext *context,
+        const deepdark_proto::DoGlobalReloadRequest *request,
+        deepdark_proto::DoGlobalReloadResponse *response
+    ) override {
+        server.supervisor.reload_global_config();
+        return grpc::Status::OK;
+    }
 };
 
 NetworkServer::NetworkServer(Supervisor& _supervisor) : supervisor(_supervisor) {

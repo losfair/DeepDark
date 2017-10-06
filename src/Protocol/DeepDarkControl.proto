@@ -5,6 +5,7 @@ package deepdark_proto;
 service DeepDarkControl {
 	rpc get_status (GetStatusRequest) returns (GetStatusResponse) {}
 	rpc change_service_state (ChangeServiceStateRequest) returns (ChangeServiceStateResponse) {}
+	rpc do_global_reload (DoGlobalReloadRequest) returns (DoGlobalReloadResponse) {}
 }
 
 message GetStatusRequest {
@@ -22,4 +23,12 @@ message ChangeServiceStateRequest {
 
 message ChangeServiceStateResponse {
 	string result = 1;
+}
+
+message DoGlobalReloadRequest {
+
+}
+
+message DoGlobalReloadResponse {
+
 }

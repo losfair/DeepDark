@@ -4,6 +4,9 @@
 #include <stdexcept>
 #include <string>
 #include <condition_variable>
+#include <algorithm>
+#include <set>
+#include <map>
 #include <assert.h>
 #include <unistd.h>
 #include <signal.h>
@@ -16,14 +19,73 @@
 
 namespace deepdark {
 
-Supervisor::Supervisor(std::vector<std::unique_ptr<deepdark::ServiceConfig>> cfgs) {
-    for(auto& cfg : cfgs) {
-        services.push_back(std::unique_ptr<ServiceState>(new ServiceState(std::move(cfg))));
-    }
+Supervisor::Supervisor(std::unique_ptr<GlobalConfig> gcfg) {
+    load_global_config(std::move(gcfg));
 }
 
 Supervisor::~Supervisor() {
     std::lock_guard<std::mutex> _lg(m);
+}
+
+void Supervisor::load_global_config(std::unique_ptr<GlobalConfig> gcfg) {
+    global_config = std::move(gcfg);
+    update_services(load_services_from_global_config(*global_config));
+}
+
+void Supervisor::reload_global_config() {
+    load_global_config(std::move(global_config));
+}
+
+// TODO: Write unit test to verify correctness
+void Supervisor::update_services(std::vector<std::unique_ptr<ServiceConfig>> _cfgs) {
+    std::lock_guard<std::mutex> _lg(m);
+
+    std::set<std::string> current_names, new_names, name_intersection;
+    std::map<std::string, std::unique_ptr<ServiceConfig>> cfgs;
+
+    for(auto& cfg : _cfgs) {
+        std::string name = cfg -> name;
+        cfgs[name] = std::move(cfg);
+    }
+
+    for(auto& s : services) {
+        current_names.insert(s -> get_name());
+    }
+
+    for(auto& cfg : cfgs) {
+        new_names.insert(cfg.first);
+    }
+
+    std::set_intersection(
+        current_names.begin(), current_names.end(),
+        new_names.begin(), new_names.end(),
+        std::inserter(name_intersection, name_intersection.begin())
+    );
+
+    std::vector<std::unique_ptr<ServiceState>> new_services;
+
+    for(auto& s : services) {
+        std::string name = s -> get_name();
+        // Service still exists...
+        if(name_intersection.find(name) != name_intersection.end()) {
+            s -> update_config(std::move(cfgs[name]));
+            new_services.push_back(std::move(s));
+        }
+    }
+
+    for(auto& cfg : cfgs) {
+        // This is a new service...
+        if(name_intersection.find(cfg.first) == name_intersection.end()) {
+            std::unique_ptr<ServiceState> state(new ServiceState(std::move(cfg.second)));
+
+            // Try autostart because this is a new service
+            state -> try_autostart();
+
+            new_services.push_back(std::move(state));
+        }
+    }
+
+    services = std::move(new_services);
 }
 
 void Supervisor::try_autostart_all() {
@@ -48,7 +110,7 @@ std::string Supervisor::get_status() {
     std::string ret;
     for(auto& svc : services) {
         ret += "Service: ";
-        ret += svc -> config -> name;
+        ret += svc -> get_name();
         ret += "\n";
         ret += "Running: ";
         ret += svc -> is_running() ? "Yes" : "No";
@@ -64,7 +126,7 @@ bool Supervisor::start_service(const std::string& name) {
     std::lock_guard<std::mutex> _lg(m);
 
     for(auto& svc : services) {
-        if(svc -> config -> name == name) {
+        if(svc -> get_name() == name) {
             return svc -> start();
         }
     }
@@ -76,7 +138,7 @@ bool Supervisor::stop_service(const std::string& name) {
     std::lock_guard<std::mutex> _lg(m);
     
     for(auto& svc : services) {
-        if(svc -> config -> name == name) {
+        if(svc -> get_name() == name) {
             return svc -> stop();
         }
     }
@@ -104,6 +166,27 @@ ServiceState::ServiceState(std::unique_ptr<deepdark::ServiceConfig> cfg) {
 
 ServiceState::~ServiceState() {
     stop();
+}
+
+void ServiceState::update_config(std::unique_ptr<ServiceConfig> cfg) {
+    std::lock_guard<std::recursive_mutex> _lg(m);
+
+    if(cfg -> name != config -> name) {
+        throw std::runtime_error("Attempting to update a service with a different name");
+    }
+
+    if(*cfg == *config) {
+        std::cerr << "[*] Not updating config for service " << config -> name << std::endl;
+    } else {
+        std::cerr << "[*] Updating config for service " << config -> name << std::endl;
+        config = std::move(cfg);
+
+        // Restart the service for the new config to take effect
+        if(is_running()) {
+            stop();
+            start();
+        }
+    }
 }
 
 bool ServiceState::try_autostart() {
@@ -254,10 +337,18 @@ bool ServiceState::stop() {
         std::unique_lock<std::recursive_mutex> _ul(m);
         if(is_running()) {
             executor_release.wait(_ul);
+            assert(is_running() == false);
         }
     }
 
     return true;
+}
+
+std::string ServiceState::get_name() {
+    std::lock_guard<std::recursive_mutex> _lg(m);
+
+    std::string name = config -> name;
+    return name;
 }
 
 } // namespace deepdark
