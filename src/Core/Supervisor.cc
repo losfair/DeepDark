@@ -169,23 +169,31 @@ ServiceState::~ServiceState() {
 }
 
 void ServiceState::update_config(std::unique_ptr<ServiceConfig> cfg) {
-    std::lock_guard<std::recursive_mutex> _lg(m);
+    bool require_restart = false;
+    {
+        std::lock_guard<std::recursive_mutex> _lg(m);
 
-    if(cfg -> name != config -> name) {
-        throw std::runtime_error("Attempting to update a service with a different name");
+        if(cfg -> name != config -> name) {
+            throw std::runtime_error("Attempting to update a service with a different name");
+        }
+
+        if(*cfg == *config) {
+            std::cerr << "[*] Not updating config for service " << config -> name << std::endl;
+        } else {
+            std::cerr << "[*] Updating config for service " << config -> name << std::endl;
+            config = std::move(cfg);
+
+            if(is_running()) {
+                require_restart = true;
+            }
+        }
     }
 
-    if(*cfg == *config) {
-        std::cerr << "[*] Not updating config for service " << config -> name << std::endl;
-    } else {
-        std::cerr << "[*] Updating config for service " << config -> name << std::endl;
-        config = std::move(cfg);
-
-        // Restart the service for the new config to take effect
-        if(is_running()) {
-            stop();
-            start();
-        }
+    // Restart the service for the new config to take effect
+    // We must release the lock here because `stop()` depends on another thread requiring this lock.
+    if(require_restart) {
+        stop();
+        start();
     }
 }
 
@@ -273,15 +281,19 @@ bool ServiceState::start() {
         if(ret == -1) exit_status = -1;
         else exit_status = WEXITSTATUS(exit_status);
 
-        std::lock_guard<std::recursive_mutex> _lg(this -> m);
-        std::clog << "[*] Service `" << this -> config -> name << "` stopped with status " << exit_status << std::endl;
-        this -> running = false;
-        this -> exit_status = exit_status;
-        this -> pid = 0;
-        this -> update_time = time(0);
-        this -> stop_time = this -> update_time;
-        this -> executor -> detach();
-        this -> executor.reset(nullptr);
+        {
+            std::lock_guard<std::recursive_mutex> _lg(this -> m);
+            std::clog << "[*] Service `" << this -> config -> name << "` stopped with status " << exit_status << std::endl;
+            this -> running = false;
+            this -> exit_status = exit_status;
+            this -> pid = 0;
+            this -> update_time = time(0);
+            this -> stop_time = this -> update_time;
+            this -> executor -> detach();
+            this -> executor.reset(nullptr);
+        }
+
+        // TODO: Does the lifetime of `this` still hold here?
         this -> executor_release.notify_all();
     }));
 
