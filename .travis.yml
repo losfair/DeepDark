@@ -1,0 +1,17 @@
+sudo: required
+language: cpp
+compiler: gcc
+script:
+  - sudo bash ./tools/ci_build.sh
+matrix:
+  include:
+    - os: linux
+      dist: precise
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-6
+      env:
+        - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
