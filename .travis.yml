@@ -6,7 +6,7 @@ script:
 matrix:
   include:
     - os: linux
-      dist: precise
+      dist: trusty
       addons:
         apt:
           sources:
