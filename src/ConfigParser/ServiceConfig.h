@@ -30,6 +30,9 @@ std::unique_ptr<ServiceConfig> ServiceConfig::load(const std::string& config) {
     std::unique_ptr<ServiceConfig> ret(new ServiceConfig());
 
     ret -> name = fields["name"];
+    if(ret -> name.size() == 0) {
+        throw ParseError::with_description("Service name required as field `name`");
+    }
     ret -> command = fields["command"];
     ret -> directory = fields["directory"];
     if(fields.find("autostart") != fields.end()) {
