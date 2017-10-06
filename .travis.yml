@@ -3,6 +3,7 @@ language: cpp
 compiler: gcc
 script:
   - sudo bash ./tools/ci_build.sh
+  - sudo cp target/deepdark target/deepdark.linux.x64
 matrix:
   include:
     - os: linux
@@ -15,3 +16,10 @@ matrix:
             - g++-6
       env:
         - MATRIX_EVAL="CC=gcc-6 && CXX=g++-6"
+deploy:
+  provider: releases
+  api_key: "$GITHUB_API_KEY"
+  file: "target/deepdark.linux.x64"
+  skip_cleanup: true
+  on:
+    tags: true
