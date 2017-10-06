@@ -147,18 +147,6 @@ bool ServiceState::start() {
 
     if((new_pid = fork()) == 0) {
         // Only one thread is running here. Things now become easy.
-        if(config -> has_uid) {
-            assert(setuid(config -> uid) == 0);
-        } else if(config -> username.size() > 0) {
-            passwd *entry = getpwnam(config -> username.c_str());
-            if(entry) {
-                assert(setuid(entry -> pw_uid) == 0);
-            } else {
-                std::cerr << "Error: Unable to find passwd entry" << std::endl;
-                std::terminate();
-            }
-        }
-
         if(config -> has_gid) {
             assert(setgid(config -> gid) == 0);
         } else if(config -> groupname.size() > 0) {
@@ -167,6 +155,18 @@ bool ServiceState::start() {
                 assert(setgid(entry -> gr_gid) == 0);
             } else {
                 std::cerr << "Error: Unable to find group entry" << std::endl;
+                std::terminate();
+            }
+        }
+
+        if(config -> has_uid) {
+            assert(setuid(config -> uid) == 0);
+        } else if(config -> username.size() > 0) {
+            passwd *entry = getpwnam(config -> username.c_str());
+            if(entry) {
+                assert(setuid(entry -> pw_uid) == 0);
+            } else {
+                std::cerr << "Error: Unable to find passwd entry" << std::endl;
                 std::terminate();
             }
         }
