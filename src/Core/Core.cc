@@ -1,5 +1,6 @@
 #include <deepdark/ConfigParser.h>
 #include <deepdark/StringUtils.h>
+#include <deepdark/Version.h>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -37,6 +38,8 @@ void gracefully_exit_on_signal(int signo) {
 }
 
 int main(int argc, const char *argv[]) {
+    std::cerr << "DeepDark Core v" << deepdark::VERSION << std::endl;
+
     if(argc < 2) {
         std::cerr << "Config file path required as the first command-line argument" << std::endl;
         return 1;
