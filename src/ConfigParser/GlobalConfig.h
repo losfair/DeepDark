@@ -5,7 +5,7 @@
 namespace deepdark {
 
 GlobalConfig::GlobalConfig() {
-    listen_addr = "127.0.0.1:8189";
+    listen_addr = "unix:/tmp/deepdark.sock";
 }
 
 std::unique_ptr<GlobalConfig> GlobalConfig::load(const std::string& config) {
