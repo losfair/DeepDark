@@ -4,6 +4,7 @@
 #include <mutex>
 #include <thread>
 #include <string>
+#include <condition_variable>
 #include <deepdark/ConfigParser.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -40,6 +41,7 @@ public:
     std::recursive_mutex m;
     std::unique_ptr<deepdark::ServiceConfig> config;
     std::unique_ptr<std::thread> executor;
+    std::condition_variable_any executor_release;
     pid_t pid;
     int exit_status;
 

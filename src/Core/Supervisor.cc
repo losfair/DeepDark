@@ -3,6 +3,7 @@
 #include <exception>
 #include <stdexcept>
 #include <string>
+#include <condition_variable>
 #include <assert.h>
 #include <unistd.h>
 #include <signal.h>
@@ -203,6 +204,7 @@ bool ServiceState::start() {
         this -> stop_time = this -> update_time;
         this -> executor -> detach();
         this -> executor.reset(nullptr);
+        this -> executor_release.notify_all();
     }));
 
     std::clog << "[*] Service `" << config -> name << "` started" << std::endl;
@@ -251,6 +253,13 @@ bool ServiceState::stop() {
 
         std::cerr << "Process is still not stopped after another 5 seconds. Killing." << std::endl;
         kill(pid, SIGKILL);
+    }
+
+    {
+        std::unique_lock<std::recursive_mutex> _ul(m);
+        if(is_running()) {
+            executor_release.wait(_ul);
+        }
     }
 
     return true;
