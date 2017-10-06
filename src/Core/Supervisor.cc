@@ -171,6 +171,10 @@ bool ServiceState::start() {
             }
         }
 
+        if(config -> directory.size() > 0) {
+            assert(chdir(config -> directory.c_str()) == 0);
+        }
+
         execl("/bin/sh", "/bin/sh", "-c", config -> command.c_str(), NULL);
         std::cerr << "Error: Unable to execute /bin/sh" << std::endl;
         std::terminate();
