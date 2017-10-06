@@ -2,9 +2,11 @@ FLAGS := -O3
 CXXFLAGS := $(FLAGS) -std=c++14 -I../include
 LDFLAGS := $(FLAGS)
 
-all: build_object
+all:
+	make protoc
+	make build_objects
 
-build_object: protoc DeepDarkControl.pb.o DeepDarkControl.grpc.pb.o
+build_objects: DeepDarkControl.pb.o DeepDarkControl.grpc.pb.o
 
 protoc:
 	protoc -I=. --cpp_out=. DeepDarkControl.proto
